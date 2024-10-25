@@ -242,6 +242,10 @@ namespace hotelhub_backend.Models
                     .HasMaxLength(255)
                     .HasColumnName("image");
 
+                entity.Property(e => e.IsApproved)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("is_approved");
+
                 entity.Property(e => e.Password)
                     .HasMaxLength(255)
                     .HasColumnName("password");

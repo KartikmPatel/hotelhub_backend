@@ -18,6 +18,7 @@ namespace hotelhub_backend.Models
         public string Password { get; set; } = null!;
         public string? Image { get; set; }
         public string City { get; set; } = null!;
+        public int IsApproved { get; set; }
 
         public virtual ICollection<Feedbacktb> Feedbacktbs { get; set; }
         public virtual ICollection<Reservationtb> Reservationtbs { get; set; }
