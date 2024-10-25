@@ -26,8 +26,8 @@ namespace hotelhub_backend.Models
         public int? FestivalId { get; set; }
 
         public virtual FestivalDiscount? Festival { get; set; }
-        public virtual Hoteltb HidNavigation { get; set; } = null!;
-        public virtual RoomCategorytb Roomcategory { get; set; } = null!;
+        public virtual RoomCategorytb? Roomcategory { get; set; }
+        public virtual Hoteltb? HidNavigation { get; set; }
         public virtual ICollection<Feedbacktb> Feedbacktbs { get; set; }
         public virtual ICollection<Reservationtb> Reservationtbs { get; set; }
         public virtual ICollection<RoomFacilitytb> RoomFacilitytbs { get; set; }

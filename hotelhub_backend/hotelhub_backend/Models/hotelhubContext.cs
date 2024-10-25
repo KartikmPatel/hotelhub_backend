@@ -35,7 +35,8 @@ namespace hotelhub_backend.Models
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseMySql("Server=127.0.0.1;Database=hotelhub;User=root;Password=root;", new MySqlServerVersion(new Version(8, 0, 22)));
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
+                optionsBuilder.UseMySql("server=127.0.0.1;database=hotelhub;user=root;password=root", Microsoft.EntityFrameworkCore.ServerVersion.Parse("10.4.32-mariadb"));
             }
         }
 
@@ -181,7 +182,7 @@ namespace hotelhub_backend.Models
                     .HasColumnType("int(11)")
                     .HasColumnName("discount");
 
-                entity.Property(e => e.Fesdate).HasColumnName("fesdate");
+                entity.Property(e => e.Fesdate).HasColumnType("date").HasColumnName("fesdate");
 
                 entity.Property(e => e.Festname)
                     .HasMaxLength(100)
@@ -200,9 +201,9 @@ namespace hotelhub_backend.Models
                     .HasMaxLength(100)
                     .HasColumnName("category_name");
 
-                entity.Property(e => e.CheckIn).HasColumnName("checkIn");
+                entity.Property(e => e.CheckIn).HasColumnType("date").HasColumnName("checkIn");
 
-                entity.Property(e => e.CheckOut).HasColumnName("checkOut");
+                entity.Property(e => e.CheckOut).HasColumnType("date").HasColumnName("checkOut");
 
                 entity.Property(e => e.HotelName)
                     .HasMaxLength(100)
@@ -229,6 +230,10 @@ namespace hotelhub_backend.Models
                     .HasMaxLength(100)
                     .HasColumnName("city");
 
+                entity.Property(e => e.Email)
+                    .HasMaxLength(255)
+                    .HasColumnName("email");
+
                 entity.Property(e => e.Hname)
                     .HasMaxLength(255)
                     .HasColumnName("hname");
@@ -236,6 +241,10 @@ namespace hotelhub_backend.Models
                 entity.Property(e => e.Image)
                     .HasMaxLength(255)
                     .HasColumnName("image");
+
+                entity.Property(e => e.Password)
+                    .HasMaxLength(255)
+                    .HasColumnName("password");
             });
 
             modelBuilder.Entity<Reservationtb>(entity =>
@@ -252,9 +261,9 @@ namespace hotelhub_backend.Models
                     .HasColumnType("int(11)")
                     .HasColumnName("id");
 
-                entity.Property(e => e.CheckIn).HasColumnName("checkIn");
+                entity.Property(e => e.CheckIn).HasColumnType("date").HasColumnName("checkIn");
 
-                entity.Property(e => e.CheckOut).HasColumnName("checkOut");
+                entity.Property(e => e.CheckOut).HasColumnType("date").HasColumnName("checkOut");
 
                 entity.Property(e => e.Hid)
                     .HasColumnType("int(11)")
@@ -481,6 +490,10 @@ namespace hotelhub_backend.Models
                 entity.Property(e => e.Email)
                     .HasMaxLength(100)
                     .HasColumnName("email");
+
+                entity.Property(e => e.Gender)
+                    .HasMaxLength(255)
+                    .HasColumnName("gender");
 
                 entity.Property(e => e.Mno)
                     .HasMaxLength(15)

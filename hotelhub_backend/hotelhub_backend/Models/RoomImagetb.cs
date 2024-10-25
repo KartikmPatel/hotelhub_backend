@@ -9,6 +9,6 @@ namespace hotelhub_backend.Models
         public int Roomid { get; set; }
         public string Image { get; set; } = null!;
 
-        public virtual Roomtb Room { get; set; } = null!;
+        public virtual Roomtb? Room { get; set; } = null!;
     }
 }

@@ -13,8 +13,8 @@ namespace hotelhub_backend.Models
         public int UserId { get; set; }
         public int? ReadStatus { get; set; }
 
-        public virtual Hoteltb HidNavigation { get; set; } = null!;
-        public virtual Roomtb Room { get; set; } = null!;
-        public virtual Usertb User { get; set; } = null!;
+        public virtual Hoteltb? HidNavigation { get; set; } = null!;
+        public virtual Roomtb? Room { get; set; } = null!;
+        public virtual Usertb? User { get; set; } = null!;
     }
 }

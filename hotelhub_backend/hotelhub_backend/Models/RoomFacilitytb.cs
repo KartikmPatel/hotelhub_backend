@@ -9,7 +9,7 @@ namespace hotelhub_backend.Models
         public int FacilityId { get; set; }
         public int RoomId { get; set; }
 
-        public virtual Facilitytb Facility { get; set; } = null!;
-        public virtual Roomtb Room { get; set; } = null!;
+        public virtual Facilitytb? Facility { get; set; } = null!;
+        public virtual Roomtb? Room { get; set; } = null!;
     }
 }

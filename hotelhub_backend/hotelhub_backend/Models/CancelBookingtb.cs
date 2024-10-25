@@ -9,7 +9,7 @@ namespace hotelhub_backend.Models
         public int Uid { get; set; }
         public int Revid { get; set; }
 
-        public virtual Reservationtb Rev { get; set; } = null!;
-        public virtual Usertb UidNavigation { get; set; } = null!;
+        public virtual Reservationtb? Rev { get; set; } = null!;
+        public virtual Usertb? UidNavigation { get; set; } = null!;
     }
 }

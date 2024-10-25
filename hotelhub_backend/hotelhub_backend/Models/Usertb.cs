@@ -18,6 +18,7 @@ namespace hotelhub_backend.Models
         public string Mno { get; set; } = null!;
         public string Password { get; set; } = null!;
         public string City { get; set; } = null!;
+        public string Gender { get; set; } = null!;
 
         public virtual ICollection<CancelBookingtb> CancelBookingtbs { get; set; }
         public virtual ICollection<Feedbacktb> Feedbacktbs { get; set; }
