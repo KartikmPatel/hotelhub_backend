@@ -52,13 +52,62 @@ namespace hotelhub_backend.Controllers
         // PUT: api/Facilitytbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutFacilitytb(int id, Facilitytb facilitytb)
+        public async Task<IActionResult> PutFacilitytb(int id, [FromForm] string facilityName, [FromForm] IFormFile? image)
         {
-            if (id != facilitytb.Id)
+            // Fetch the existing facility record by ID
+            var facilitytb = await _context.Facilitytbs.FindAsync(id);
+
+            if (facilitytb == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
+            // Update the facility name
+            facilitytb.FacilityName = facilityName;
+
+            // If a new image is provided, upload it
+            if (image != null && image.Length > 0)
+            {
+                try
+                {
+                    // Define the upload path (ensure it's correctly set up)
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+
+                    // Ensure the uploads folder exists
+                    if (!Directory.Exists(uploadPath))
+                    {
+                        Directory.CreateDirectory(uploadPath);
+                    }
+
+                    // Generate the file path
+                    var filePath = Path.Combine(uploadPath, image.FileName);
+
+                    // Delete the old image if it exists
+                    if (!string.IsNullOrEmpty(facilitytb.Image))
+                    {
+                        var oldImagePath = Path.Combine(uploadPath, facilitytb.Image);
+                        if (System.IO.File.Exists(oldImagePath))
+                        {
+                            System.IO.File.Delete(oldImagePath);
+                        }
+                    }
+
+                    // Save the new image to the specified path
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Update the image filename in the database
+                    facilitytb.Image = image.FileName;
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Internal server error: {ex.Message}");
+                }
+            }
+
+            // Mark the entity as modified and save changes
             _context.Entry(facilitytb).State = EntityState.Modified;
 
             try
@@ -80,20 +129,58 @@ namespace hotelhub_backend.Controllers
             return NoContent();
         }
 
+
         // POST: api/Facilitytbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Facilitytb>> PostFacilitytb(Facilitytb facilitytb)
+        public async Task<IActionResult> PostFacilitytb([FromForm] string facilityName, [FromForm] IFormFile image)
         {
-          if (_context.Facilitytbs == null)
-          {
-              return Problem("Entity set 'hotelhubContext.Facilitytbs'  is null.");
-          }
-            _context.Facilitytbs.Add(facilitytb);
-            await _context.SaveChangesAsync();
+            try
+            {
+                if (image != null && image.Length > 0)
+                {
+                    // Define the upload path (ensure it's correctly set up)
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 
-            return CreatedAtAction("GetFacilitytb", new { id = facilitytb.Id }, facilitytb);
+                    // Ensure the uploads folder exists
+                    if (!Directory.Exists(uploadPath))
+                    {
+                        Directory.CreateDirectory(uploadPath);
+                    }
+
+                    // Generate the file path
+                    var filePath = Path.Combine(uploadPath, image.FileName);
+
+                    // Save the file to the specified path
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Create a new Facilitytb instance
+                    var facilitytb = new Facilitytb
+                    {
+                        FacilityName = facilityName,
+                        Image = image.FileName  // Save only the filename in the database
+                    };
+
+                    // Save facility details to the database
+                    _context.Facilitytbs.Add(facilitytb);
+                    await _context.SaveChangesAsync();
+
+                    return CreatedAtAction("GetFacilitytb", new { id = facilitytb.Id }, facilitytb);
+                }
+                else
+                {
+                    return BadRequest("No file uploaded.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
+
 
         // DELETE: api/Facilitytbs/5
         [HttpDelete("{id}")]
@@ -105,7 +192,7 @@ namespace hotelhub_backend.Controllers
             }
             var facilitytb = await _context.Facilitytbs.FindAsync(id);
             if (facilitytb == null)
-            {
+            {  
                 return NotFound();
             }
 
