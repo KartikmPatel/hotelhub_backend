@@ -27,21 +27,28 @@ namespace hotelhub_backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Hoteltb>>> GetHoteltbs()
         {
-          if (_context.Hoteltbs == null)
-          {
-              return NotFound();
-          }
+            if (_context.Hoteltbs == null)
+            {
+                return NotFound();
+            }
             return await _context.Hoteltbs.ToListAsync();
+        }
+
+        [HttpGet("gethotelcount")]
+        public async Task<int> gethotelcount()
+        {
+            int hotelcount = await _context.Hoteltbs.CountAsync();
+            return hotelcount;
         }
 
         // GET: api/Hoteltbs/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Hoteltb>> GetHoteltb(int id)
         {
-          if (_context.Hoteltbs == null)
-          {
-              return NotFound();
-          }
+            if (_context.Hoteltbs == null)
+            {
+                return NotFound();
+            }
             var hoteltb = await _context.Hoteltbs.FindAsync(id);
 
             if (hoteltb == null)
@@ -97,7 +104,7 @@ namespace hotelhub_backend.Controllers
         // POST: api/Hoteltbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Hoteltb>> PostHoteltb([FromForm] string hname, [FromForm] string email, [FromForm] string password,[FromForm] IFormFile image, [FromForm] string city)
+        public async Task<ActionResult<Hoteltb>> PostHoteltb([FromForm] string hname, [FromForm] string email, [FromForm] string password, [FromForm] IFormFile image, [FromForm] string city)
         {
             try
             {
@@ -227,6 +234,28 @@ namespace hotelhub_backend.Controllers
             }
 
             return Ok(new { message = "Login successful." });
+        }
+
+        [HttpPost("approve")]
+        public async Task<IActionResult> ApproveHotel([FromBody] Dictionary<string, int> request)
+        {
+            if (!request.ContainsKey("id"))
+            {
+                return BadRequest(new { message = "Hotel ID is required." });
+            }
+
+            int hotelId = request["id"];
+
+            var hotel = await _context.Hoteltbs.FindAsync(hotelId);
+            if (hotel == null)
+            {
+                return NotFound(new { message = "Hotel not found." });
+            }
+
+            hotel.IsApproved = 1;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Hotel approved successfully." });
         }
 
     }
