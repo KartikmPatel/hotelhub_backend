@@ -22,14 +22,20 @@ namespace hotelhub_backend.Controllers
 
         // GET: api/RoomFacilitytbs
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RoomFacilitytb>>> GetRoomFacilitytbs()
+        public async Task<ActionResult<IEnumerable<RoomFacilitytb>>> GetRoomFacilitytbs(int roomid)
         {
-          if (_context.RoomFacilitytbs == null)
-          {
-              return NotFound();
-          }
-            return await _context.RoomFacilitytbs.ToListAsync();
+            if (_context.RoomFacilitytbs == null)
+            {
+                return NotFound();
+            }
+
+            var roomFacilities = await (from facility in _context.RoomFacilitytbs
+                                        where facility.RoomId == roomid
+                                        select facility).ToListAsync();
+
+            return Ok(roomFacilities);
         }
+
 
         // GET: api/RoomFacilitytbs/5
         [HttpGet("{id}")]
@@ -83,37 +89,56 @@ namespace hotelhub_backend.Controllers
         // POST: api/RoomFacilitytbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<RoomFacilitytb>> PostRoomFacilitytb(RoomFacilitytb roomFacilitytb)
+        public async Task<ActionResult<RoomFacilitytb>> PostRoomFacilitytb([FromBody] RoomFacilitytb request)
         {
-          if (_context.RoomFacilitytbs == null)
-          {
-              return Problem("Entity set 'hotelhubContext.RoomFacilitytbs'  is null.");
-          }
-            _context.RoomFacilitytbs.Add(roomFacilitytb);
-            await _context.SaveChangesAsync();
+            if (_context.RoomFacilitytbs == null)
+            {
+                return Problem("Entity set 'hotelhubContext.RoomFacilitytbs' is null.");
+            }
 
-            return CreatedAtAction("GetRoomFacilitytb", new { id = roomFacilitytb.Id }, roomFacilitytb);
+            var roomFacilitytb = new RoomFacilitytb
+            {
+                FacilityId = request.FacilityId,  
+                RoomId = request.RoomId          
+            };
+
+
+            _context.RoomFacilitytbs.Add(roomFacilitytb);
+            await _context.SaveChangesAsync();  
+
+            
+            return CreatedAtAction("GetRoomFacilitytbs", new { roomid = roomFacilitytb.RoomId }, roomFacilitytb);
         }
 
-        // DELETE: api/RoomFacilitytbs/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRoomFacilitytb(int id)
+
+
+        
+        [HttpDelete("{roomid}")]
+        public async Task<IActionResult> DeleteRoomFacilitytb(int roomid)
         {
             if (_context.RoomFacilitytbs == null)
             {
                 return NotFound();
             }
-            var roomFacilitytb = await _context.RoomFacilitytbs.FindAsync(id);
-            if (roomFacilitytb == null)
+
+            
+            var roomFacilities = await _context.RoomFacilitytbs
+                                               .Where(rf => rf.RoomId == roomid)
+                                               .ToListAsync();
+
+            
+            if (roomFacilities == null || !roomFacilities.Any())
             {
-                return NotFound();
+                return NotFound($"No facilities found for room ID: {roomid}");
             }
 
-            _context.RoomFacilitytbs.Remove(roomFacilitytb);
+            
+            _context.RoomFacilitytbs.RemoveRange(roomFacilities);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
+
 
         private bool RoomFacilitytbExists(int id)
         {

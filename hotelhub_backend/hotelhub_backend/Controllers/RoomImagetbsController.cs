@@ -21,14 +21,19 @@ namespace hotelhub_backend.Controllers
         }
 
         // GET: api/RoomImagetbs
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<RoomImagetb>>> GetRoomImagetbs()
+        [HttpGet("roomimages/{roomid}")]
+        public async Task<ActionResult<IEnumerable<RoomImagetb>>> GetRoomImagetbs(int roomid)
         {
-          if (_context.RoomImagetbs == null)
-          {
-              return NotFound();
-          }
-            return await _context.RoomImagetbs.ToListAsync();
+            if (_context.RoomImagetbs == null)
+            {
+                return NotFound();
+            }
+
+            var roomImages = await (from image in _context.RoomImagetbs
+                                    where image.Roomid == roomid
+                                    select image).ToListAsync();
+
+            return Ok(roomImages);
         }
 
         // GET: api/RoomImagetbs/5
@@ -82,18 +87,67 @@ namespace hotelhub_backend.Controllers
 
         // POST: api/RoomImagetbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<RoomImagetb>> PostRoomImagetb(RoomImagetb roomImagetb)
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadRoomImages([FromForm] int roomId, [FromForm] ICollection<IFormFile> images)
         {
-          if (_context.RoomImagetbs == null)
-          {
-              return Problem("Entity set 'hotelhubContext.RoomImagetbs'  is null.");
-          }
-            _context.RoomImagetbs.Add(roomImagetb);
-            await _context.SaveChangesAsync();
+            try
+            {
+                if (images == null || images.Count == 0)
+                {
+                    return BadRequest("No images uploaded.");
+                }
 
-            return CreatedAtAction("GetRoomImagetb", new { id = roomImagetb.Id }, roomImagetb);
+                // Define the upload path (ensure it's correctly set up)
+                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "roomimages");
+
+                // Ensure the uploads folder exists
+                if (!Directory.Exists(uploadPath))
+                {
+                    Directory.CreateDirectory(uploadPath);
+                }
+
+                var fileNames = new List<string>();
+
+                // Loop through each image and save it to the server
+                foreach (var image in images)
+                {
+                    if (image.Length > 0)
+                    {
+                        // Generate the file path
+                        var filePath = Path.Combine(uploadPath, image.FileName);
+
+                        // Save the file to the specified path
+                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await image.CopyToAsync(stream);
+                        }
+
+                        // Create a new RoomImagetb instance
+                        var roomImagetb = new RoomImagetb
+                        {
+                            Roomid = roomId,  // Set the roomId from the request
+                            Image = image.FileName  // Save only the filename in the database
+                        };
+
+                        // Save room image details to the database
+                        _context.RoomImagetbs.Add(roomImagetb);
+                        fileNames.Add(image.FileName);
+                    }
+                }
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                // Return the response with the list of uploaded file names
+                return Ok(new { message = "Images uploaded successfully", fileNames });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
+
+
 
         // DELETE: api/RoomImagetbs/5
         [HttpDelete("{id}")]
