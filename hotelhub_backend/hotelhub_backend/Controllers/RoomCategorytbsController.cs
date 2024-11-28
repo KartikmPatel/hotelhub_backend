@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using hotelhub_backend.Models;
+using Org.BouncyCastle.Utilities;
 
 namespace hotelhub_backend.Controllers
 {
@@ -29,6 +30,13 @@ namespace hotelhub_backend.Controllers
               return NotFound();
           }
             return await _context.RoomCategorytbs.ToListAsync();
+        }
+
+        [HttpGet("getcategorycount")]
+        public async Task<int> getcategorycount()
+        {
+            int catcount = await _context.RoomCategorytbs.CountAsync();
+            return catcount;
         }
 
         // GET: api/RoomCategorytbs/5

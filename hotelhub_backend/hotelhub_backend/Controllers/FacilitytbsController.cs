@@ -31,6 +31,13 @@ namespace hotelhub_backend.Controllers
             return await _context.Facilitytbs.ToListAsync();
         }
 
+        [HttpGet("getfacilitycount")]
+        public async Task<int> getfacilitycount()
+        {
+            int facilitycount = await _context.Facilitytbs.CountAsync();
+            return facilitycount;
+        }
+
         // GET: api/Facilitytbs/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Facilitytb>> GetFacilitytb(int id)

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using hotelhub_backend.Models;
 using System.Text;
 using System.Security.Cryptography;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace hotelhub_backend.Controllers
 {
@@ -96,17 +97,61 @@ namespace hotelhub_backend.Controllers
         // POST: api/Hoteltbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Hoteltb>> PostHoteltb(Hoteltb hoteltb)
+        public async Task<ActionResult<Hoteltb>> PostHoteltb([FromForm] string hname, [FromForm] string email, [FromForm] string password,[FromForm] IFormFile image, [FromForm] string city)
         {
-          if (_context.Hoteltbs == null)
-          {
-              return Problem("Entity set 'hotelhubContext.Hoteltbs'  is null.");
-          }
-            hoteltb.Password = HashPassword(hoteltb.Password);
-            _context.Hoteltbs.Add(hoteltb);
-            await _context.SaveChangesAsync();
+            try
+            {
+                // Check if an image is provided
+                if (image != null && image.Length > 0)
+                {
+                    // Define the upload path (ensure it's correctly set up)
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 
-            return CreatedAtAction("GetHoteltb", new { id = hoteltb.Id }, hoteltb);
+                    // Ensure the uploads folder exists
+                    if (!Directory.Exists(uploadPath))
+                    {
+                        Directory.CreateDirectory(uploadPath);
+                    }
+
+                    // Generate the file path where the image will be saved
+                    var filePath = Path.Combine(uploadPath, image.FileName);
+
+                    // Save the image file to the server
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Create a new Featurestb instance
+                    var hoteltb = new Hoteltb
+                    {
+                        Hname = hname,
+                        Email = email,
+                        Password = password,
+                        Image = image.FileName,      // Store only the filename in the database
+                        City = city
+                    };
+
+                    if (_context.Hoteltbs == null)
+                    {
+                        return Problem("Entity set 'hotelhubContext.Hoteltbs'  is null.");
+                    }
+                    hoteltb.Password = HashPassword(hoteltb.Password);
+                    _context.Hoteltbs.Add(hoteltb);
+                    await _context.SaveChangesAsync();
+
+                    return CreatedAtAction("GetHoteltb", new { id = hoteltb.Id }, hoteltb);
+
+                }
+                else
+                {
+                    return BadRequest("No file uploaded.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         // DELETE: api/Hoteltbs/5
@@ -152,24 +197,37 @@ namespace hotelhub_backend.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<string> Login(string email, string password)
+        public async Task<IActionResult> Login([FromBody] Dictionary<string, string> loginData)
         {
+            if (!loginData.ContainsKey("email") || !loginData.ContainsKey("password"))
+            {
+                return BadRequest(new { message = "Email and password are required." });
+            }
+
+            var email = loginData["email"];
+            var password = loginData["password"];
 
             var hotel = await _context.Hoteltbs.FirstOrDefaultAsync(u => u.Email == email);
 
             if (hotel == null)
             {
-                return "Invalid email or password.";
+                return Unauthorized(new { message = "Invalid email or password." });
             }
 
             string hashedPassword = HashPassword(password);
 
             if (hotel.Password != hashedPassword)
             {
-                return "Invalid email or password."; ;
+                return Unauthorized(new { message = "Invalid email or password." });
             }
 
-            return "login success";
+            if (hotel.IsApproved == 0)
+            {
+                return Unauthorized(new { message = "Your account is not approved by the admin." });
+            }
+
+            return Ok(new { message = "Login successful." });
         }
+
     }
 }
