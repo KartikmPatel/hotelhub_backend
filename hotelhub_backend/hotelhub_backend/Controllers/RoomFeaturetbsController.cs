@@ -55,6 +55,28 @@ namespace hotelhub_backend.Controllers
             return roomFeaturetb;
         }
 
+        // GET: api/RoomFeaturetbs/getAllFeatureByHotel/5
+        [HttpGet("getAllFeatureByHotel/{id}")]
+        public async Task<ActionResult<IEnumerable<object>>> GetRoomFeatureByHotel(int id)
+        {
+            var features = await (from feature in _context.Featurestbs
+                                  join roomFeature in _context.RoomFeaturetbs on feature.Id equals roomFeature.FeatureId
+                                  join room in _context.Roomtbs on roomFeature.RoomId equals room.Id
+                                  where room.Hid == id
+                                  select new
+                                  {
+                                      feature.FeatureName,
+                                      feature.Image
+                                  }).Distinct().ToListAsync();
+
+            if (features == null)
+            {
+                return NotFound();
+            }
+
+            return features;
+        }
+
         // PUT: api/RoomFeaturetbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
