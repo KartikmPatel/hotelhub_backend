@@ -31,22 +31,21 @@ namespace hotelhub_backend.Controllers
             return await _context.Roomtbs.ToListAsync();
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Roomtb>>> GetRoomtbs()
+        [HttpGet("hotel/{hid}")]
+        public async Task<ActionResult<IEnumerable<object>>> GetRoomtbsByHotelId(int hid)
         {
             if (_context.Roomtbs == null)
             {
                 return NotFound();
             }
 
-            // Get rooms and their associated category name
             var rooms = await (from room in _context.Roomtbs
-                               where room.Hid == 1
+                               where room.Hid == hid
                                select new
                                {
                                    room.Id,
                                    room.Roomcategoryid,
-                                   CategoryName = room.Roomcategory.CategoryName, // Access the Name from the RoomCategorytb entity
+                                   CategoryName = room.Roomcategory.CategoryName,
                                    room.AdultCapacity,
                                    room.ChildrenCapacity,
                                    room.Quantity,
@@ -54,9 +53,13 @@ namespace hotelhub_backend.Controllers
                                    room.Discount
                                }).ToListAsync();
 
+            if (rooms.Count == 0)
+            {
+                return NotFound("No rooms found for the given hotel ID.");
+            }
+
             return Ok(rooms);
         }
-
 
         // GET: api/Roomtbs/5
         [HttpGet("{id}")]

@@ -258,5 +258,25 @@ namespace hotelhub_backend.Controllers
             return Ok(new { message = "Hotel approved successfully." });
         }
 
+        [HttpPost("gethid")]
+        public async Task<IActionResult> GetHotelId([FromBody] Dictionary<string, string> emailData)
+        {
+            if (!emailData.ContainsKey("email"))
+            {
+                return BadRequest("Email is required.");
+            }
+
+            var email = emailData["email"];
+
+            var hotel = await _context.Hoteltbs.FirstOrDefaultAsync(u => u.Email == email);
+
+            if (hotel == null)
+            {
+                return NotFound("Hotel not found.");
+            }
+
+            return Ok(new { HotelId = hotel.Id });
+        }
+
     }
 }
