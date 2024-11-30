@@ -9,6 +9,9 @@ using hotelhub_backend.Models;
 using System.Text;
 using System.Security.Cryptography;
 using static System.Net.Mime.MediaTypeNames;
+using Org.BouncyCastle.Crypto.Generators;
+using System.Net.Mail;
+using System.Net;
 
 namespace hotelhub_backend.Controllers
 {
@@ -137,7 +140,44 @@ namespace hotelhub_backend.Controllers
 
             return NoContent();
         }
-    
+
+
+        [HttpPut("changeHotelPassword/{id}")]
+        public async Task<ActionResult<Hoteltb>> ChangePassword(int id, [FromForm] string password, [FromForm] string newpassword)
+        {
+            try
+            {
+                // Retrieve the hotel by ID
+                var hoteltb = await _context.Hoteltbs.FindAsync(id);
+
+                if (hoteltb == null)
+                {
+                    return NotFound($"Hotel with ID {id} not found.");
+                }
+
+                string op = HashPassword(password); // Hash the provided old password
+
+                // Check if the old password matches the stored password (hashed)
+                if (!op.Equals(hoteltb.Password))
+                {
+                    return BadRequest("The old password is incorrect.");
+                }
+
+                // Hash the new password and update
+                hoteltb.Password = HashPassword(newpassword);
+
+                // Save the changes to the database
+                _context.Hoteltbs.Update(hoteltb);
+                await _context.SaveChangesAsync();
+
+                return Ok(hoteltb); // Return the updated hotel info
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
 
         // POST: api/Hoteltbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
@@ -197,7 +237,7 @@ namespace hotelhub_backend.Controllers
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-        }
+        }   
 
         // DELETE: api/Hoteltbs/5
         [HttpDelete("{id}")]
@@ -272,6 +312,113 @@ namespace hotelhub_backend.Controllers
             }
 
             return Ok(new { message = "Login successful." });
+        }
+
+        [HttpPost("forgotpassword")]
+        public async Task<IActionResult> ForgotPassword([FromForm] string email)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(email))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
+
+                var user = await _context.Hoteltbs.FirstOrDefaultAsync(h => h.Email == email);
+                if (user == null)
+                {
+                    return NotFound(new { message = "No user found with this email." });
+                }
+
+                // Construct the reset URL
+                var resetUrl = $"{Request.Scheme}://{Request.Host}/reset-password";
+
+                // Send the email with the reset link
+                var subject = "Password Reset Request";
+                var body = $@"
+                    <p>Hi {user.Hname},</p>
+                    <p>You requested to reset your password. Click the link below to reset your password:</p>
+                    <a href='{resetUrl}'>Reset Password</a>
+                    <p>If you did not request this, please ignore this email.</p>";
+
+                // Try sending the email
+                await SendEmailAsync(user.Email, subject, body);
+
+                return Ok(new { message = "Password reset email sent successfully." });
+            }
+            catch (Exception ex)
+            {
+                // Log detailed error message
+                Console.Error.WriteLine($"Error sending password reset email: {ex.Message}");
+                Console.Error.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
+            }
+        }
+
+        private async Task SendEmailAsync(string toEmail, string subject, string body)
+        {
+            try
+            {
+                var smtpClient = new SmtpClient("smtp.gmail.com")
+                {
+                    Port = 587,
+                    Credentials = new NetworkCredential(
+                        Environment.GetEnvironmentVariable("pnaitik504@gmail.com"), // Get SMTP user from environment variables
+                        Environment.GetEnvironmentVariable("qnpqwcohvtazvehb") // Get SMTP password from environment variables
+                    ),
+                    EnableSsl = true,
+                };
+
+                var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(Environment.GetEnvironmentVariable("pnaitik504@gmail.com")),
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true,
+                };
+                mailMessage.To.Add(toEmail);
+
+                // Send the email asynchronously
+                await smtpClient.SendMailAsync(mailMessage);
+            }
+            catch (SmtpException smtpEx)
+            {
+                Console.Error.WriteLine($"SMTP Error: {smtpEx.Message}");
+                throw new Exception("Error while sending email. Please try again later.");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"General Error: {ex.Message}");
+                throw new Exception("An unexpected error occurred. Please try again later.");
+            }
+        }
+
+
+
+        [HttpPost("resetpassword")]
+        public async Task<IActionResult> ResetPassword([FromForm] string email, [FromForm] string newPassword)
+        {
+            try
+            {
+                // Find user by reset token (no expiration check)
+                var user = await _context.Hoteltbs.FirstOrDefaultAsync(u => u.Email == email);
+
+                if (user == null)
+                {
+                    return BadRequest(new { message = "Invalid User." });
+                }
+
+                // Reset the password
+                user.Password = HashPassword(newPassword);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Password reset successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
+            }
         }
 
         [HttpPost("approve")]
