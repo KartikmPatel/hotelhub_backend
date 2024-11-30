@@ -60,27 +60,67 @@ namespace hotelhub_backend.Controllers
         }
 
         // PUT: api/Hoteltbs/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutHoteltb(int id, Hoteltb hoteltb)
+        public async Task<IActionResult> PutHoteltb(int id, [FromForm] string hname, [FromForm] string email, [FromForm] string city, [FromForm] IFormFile? image)
         {
-            if (id != hoteltb.Id)
+            // Fetch the existing hotel record by ID
+            var hoteltb = await _context.Hoteltbs.FindAsync(id);
+            if (hoteltb == null)
             {
-                return BadRequest();
+                return NotFound("Hotel not found.");
             }
-            var existingHotel = await _context.Hoteltbs.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+
+            // Update hotel details
+            hoteltb.Hname = hname;
+            hoteltb.Email = email;
+            hoteltb.City = city;
+
+            if (image != null && image.Length > 0)
+            {
+                try
+                {
+                    // Generate a unique filename for the uploaded file
+                    var uniqueFileName = Guid.NewGuid() + Path.GetExtension(image.FileName);
+
+                    // Define upload path (use environment variable or config)
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+
+                    // Ensure the uploads folder exists
+                    if (!Directory.Exists(uploadPath))
+                    {
+                        Directory.CreateDirectory(uploadPath);
+                    }
+
+                    // Define full file path
+                    var filePath = Path.Combine(uploadPath, uniqueFileName);
+
+                    // Delete the old image if it exists
+                    if (!string.IsNullOrEmpty(hoteltb.Image))
+                    {
+                        var oldImagePath = Path.Combine(uploadPath, hoteltb.Image);
+                        if (System.IO.File.Exists(oldImagePath))
+                        {
+                            System.IO.File.Delete(oldImagePath);
+                        }
+                    }
+
+                    // Save the new image
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Update the image filename in the database
+                    hoteltb.Image = uniqueFileName;
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Image upload failed: {ex.Message}");
+                }
+            }
+
+            // Mark entity as modified and save changes
             _context.Entry(hoteltb).State = EntityState.Modified;
-
-            if (existingHotel == null)
-            {
-                return NotFound();
-            }
-
-            if (existingHotel.Password != hoteltb.Password)
-            {
-                // Hash the new password before saving
-                hoteltb.Password = HashPassword(hoteltb.Password);
-            }
 
             try
             {
@@ -90,16 +130,14 @@ namespace hotelhub_backend.Controllers
             {
                 if (!HoteltbExists(id))
                 {
-                    return NotFound();
+                    return NotFound("Hotel record not found during update.");
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
         }
+    
 
         // POST: api/Hoteltbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
