@@ -79,34 +79,49 @@ namespace hotelhub_backend.Controllers
 
         // PUT: api/RoomFacilitytbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRoomFacilitytb(int id, RoomFacilitytb roomFacilitytb)
+        [HttpPut("updateRoomFacilities/{roomId}")]
+        public async Task<IActionResult> UpdateRoomFacilities(int roomId, [FromBody] List<int> facilityIds)
         {
-            if (id != roomFacilitytb.Id)
+            // Find existing facilities linked to the room
+            var existingRoomFacilities = _context.RoomFacilitytbs
+                .Where(rf => rf.RoomId == roomId)
+                .ToList();
+
+            // Remove facilities that are no longer selected
+            foreach (var existingFacility in existingRoomFacilities)
             {
-                return BadRequest();
+                if (!facilityIds.Contains(existingFacility.FacilityId))
+                {
+                    _context.RoomFacilitytbs.Remove(existingFacility);
+                }
             }
 
-            _context.Entry(roomFacilitytb).State = EntityState.Modified;
+            // Add new facilities that are selected but not in the existing database
+            foreach (var facilityId in facilityIds)
+            {
+                if (!existingRoomFacilities.Any(rf => rf.FacilityId == facilityId))
+                {
+                    _context.RoomFacilitytbs.Add(new RoomFacilitytb
+                    {
+                        RoomId = roomId,
+                        FacilityId = facilityId
+                    });
+                }
+            }
 
+            // Save changes to the database
             try
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateException)
             {
-                if (!RoomFacilitytbExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error updating facilities");
             }
 
             return NoContent();
         }
+
 
         // POST: api/RoomFacilitytbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754

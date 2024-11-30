@@ -82,14 +82,33 @@ namespace hotelhub_backend.Controllers
         // PUT: api/Roomtbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutRoomtb(int id, Roomtb roomtb)
+        public async Task<IActionResult> PutRoomtb(int id, [FromBody] Roomtb roomtb)
         {
             if (id != roomtb.Id)
             {
                 return BadRequest();
             }
 
-            _context.Entry(roomtb).State = EntityState.Modified;
+            // Ensure the room category and hotel relationship updates are correctly handled
+            var existingRoom = await _context.Roomtbs.FindAsync(id);
+            if (existingRoom == null)
+            {
+                return NotFound();
+            }
+
+            // Update fields individually to avoid overwriting unintended data
+            existingRoom.Id = roomtb.Id;
+            existingRoom.Roomcategoryid = roomtb.Roomcategoryid;
+            existingRoom.AdultCapacity = roomtb.AdultCapacity;
+            existingRoom.ChildrenCapacity = roomtb.ChildrenCapacity;
+            existingRoom.Quantity = roomtb.Quantity;
+            existingRoom.Rent = roomtb.Rent;
+            existingRoom.Discount = roomtb.Discount;
+            existingRoom.ActiveStatus = roomtb.ActiveStatus;
+            existingRoom.FestivalId = roomtb.FestivalId;
+            existingRoom.Hid = roomtb.Hid;
+
+            _context.Entry(existingRoom).State = EntityState.Modified;
 
             try
             {
@@ -109,6 +128,7 @@ namespace hotelhub_backend.Controllers
 
             return NoContent();
         }
+
 
         // POST: api/Roomtbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754

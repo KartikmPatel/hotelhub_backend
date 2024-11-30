@@ -79,34 +79,49 @@ namespace hotelhub_backend.Controllers
 
         // PUT: api/RoomFeaturetbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRoomFeaturetb(int id, RoomFeaturetb roomFeaturetb)
+        [HttpPut("updateRoomFeatures/{roomId}")]
+        public async Task<IActionResult> UpdateRoomFeatures(int roomId, [FromBody] List<int> featureIds)
         {
-            if (id != roomFeaturetb.Id)
+            // Find existing features linked to the room
+            var existingRoomFeatures = _context.RoomFeaturetbs
+                .Where(rf => rf.RoomId == roomId)
+                .ToList();
+
+            // Remove features that are no longer selected
+            foreach (var existingFeature in existingRoomFeatures)
             {
-                return BadRequest();
+                if (!featureIds.Contains(existingFeature.FeatureId))
+                {
+                    _context.RoomFeaturetbs.Remove(existingFeature);
+                }
             }
 
-            _context.Entry(roomFeaturetb).State = EntityState.Modified;
+            // Add new features that are selected but not in the existing database
+            foreach (var featureId in featureIds)
+            {
+                if (!existingRoomFeatures.Any(rf => rf.FeatureId == featureId))
+                {
+                    _context.RoomFeaturetbs.Add(new RoomFeaturetb
+                    {
+                        RoomId = roomId,
+                        FeatureId = featureId
+                    });
+                }
+            }
 
+            // Save changes to the database
             try
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateException)
             {
-                if (!RoomFeaturetbExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error updating features");
             }
 
             return NoContent();
         }
+
 
         // POST: api/RoomFeaturetbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
