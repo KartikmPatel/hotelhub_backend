@@ -315,15 +315,19 @@ namespace hotelhub_backend.Controllers
         }
 
         [HttpPost("forgotpassword")]
-        public async Task<IActionResult> ForgotPassword([FromForm] string email)
+        public async Task<IActionResult> ForgotPassword([FromBody] Dictionary<string, string> emailData)
         {
             try
             {
-                if (string.IsNullOrEmpty(email))
+                // Validate input
+                if (!emailData.ContainsKey("email"))
                 {
                     return BadRequest(new { message = "Email is required." });
                 }
 
+                var email = emailData["email"];
+
+                // Check if user exists
                 var user = await _context.Hoteltbs.FirstOrDefaultAsync(h => h.Email == email);
                 if (user == null)
                 {
@@ -331,24 +335,24 @@ namespace hotelhub_backend.Controllers
                 }
 
                 // Construct the reset URL
-                var resetUrl = $"{Request.Scheme}://{Request.Host}/reset-password";
+                var resetUrl = $"http://localhost:4200/resethotelpassword?email={email}";
 
-                // Send the email with the reset link
+                // Email content
                 var subject = "Password Reset Request";
                 var body = $@"
-                    <p>Hi {user.Hname},</p>
-                    <p>You requested to reset your password. Click the link below to reset your password:</p>
-                    <a href='{resetUrl}'>Reset Password</a>
-                    <p>If you did not request this, please ignore this email.</p>";
+            <p>Hi {user.Hname},</p>
+            <p>You requested to reset your password. Click the link below to reset your password:</p>
+            <a href='{resetUrl}' target='_blank'>Reset Password</a>
+            <p>If you did not request this, please ignore this email.</p>";
 
-                // Try sending the email
+                // Send the email
                 await SendEmailAsync(user.Email, subject, body);
 
                 return Ok(new { message = "Password reset email sent successfully." });
             }
             catch (Exception ex)
             {
-                // Log detailed error message
+                // Log the error
                 Console.Error.WriteLine($"Error sending password reset email: {ex.Message}");
                 Console.Error.WriteLine($"Stack Trace: {ex.StackTrace}");
 
@@ -360,19 +364,20 @@ namespace hotelhub_backend.Controllers
         {
             try
             {
+                // Hardcoded credentials for debugging (replace with environment variables in production)
+                var smtpUser = "kartikmpatel0804@gmail.com";
+                var smtpPassword = "amyvnsuxoraosiif"; // Use your Gmail App Password here
+
                 var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
                     Port = 587,
-                    Credentials = new NetworkCredential(
-                        Environment.GetEnvironmentVariable("pnaitik504@gmail.com"), // Get SMTP user from environment variables
-                        Environment.GetEnvironmentVariable("qnpqwcohvtazvehb") // Get SMTP password from environment variables
-                    ),
+                    Credentials = new NetworkCredential(smtpUser, smtpPassword),
                     EnableSsl = true,
                 };
 
                 var mailMessage = new MailMessage
                 {
-                    From = new MailAddress(Environment.GetEnvironmentVariable("pnaitik504@gmail.com")),
+                    From = new MailAddress(smtpUser),
                     Subject = subject,
                     Body = body,
                     IsBodyHtml = true,
@@ -394,22 +399,28 @@ namespace hotelhub_backend.Controllers
             }
         }
 
-
-
         [HttpPost("resetpassword")]
-        public async Task<IActionResult> ResetPassword([FromForm] string email, [FromForm] string newPassword)
+        public async Task<IActionResult> ResetPassword([FromBody] Dictionary<string, string> resetData)
         {
             try
             {
-                // Find user by reset token (no expiration check)
+                if (!resetData.ContainsKey("email") || !resetData.ContainsKey("password"))
+                {
+                    return BadRequest(new { message = "Email and password are required." });
+                }
+
+                var email = resetData["email"];
+                var newPassword = resetData["password"];
+
+                // Find user by email
                 var user = await _context.Hoteltbs.FirstOrDefaultAsync(u => u.Email == email);
 
                 if (user == null)
                 {
-                    return BadRequest(new { message = "Invalid User." });
+                    return BadRequest(new { message = "Invalid user." });
                 }
 
-                // Reset the password
+                // Reset the password (assumes HashPassword is a method for hashing passwords)
                 user.Password = HashPassword(newPassword);
                 await _context.SaveChangesAsync();
 
