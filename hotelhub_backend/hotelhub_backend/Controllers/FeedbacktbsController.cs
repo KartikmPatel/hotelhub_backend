@@ -31,6 +31,33 @@ namespace hotelhub_backend.Controllers
             return await _context.Feedbacktbs.ToListAsync();
         }
 
+        [HttpGet("getByHotel/{hid}")]
+        public async Task<ActionResult<IEnumerable<Feedbacktb>>> getByHotel(int hid)
+        {
+            if (_context.Feedbacktbs == null)
+            {
+                return NotFound();
+            }
+
+            var feedbacks = await (from feedback in _context.Feedbacktbs
+                                   where feedback.Hid == hid
+                                   select new
+                                   {
+                                       feedback.Id,
+                                       feedback.Comments,
+                                       feedback.Rating,
+                                       categoryname = feedback.Room.Roomcategory.CategoryName,
+                                       username = feedback.User.Name,
+                                       feedback.ReadStatus
+                                   }).ToListAsync();
+            if(feedbacks.Count==0) {
+                return NotFound("No Feedback found for the given hotel ID.");
+            }
+
+            return Ok(feedbacks);
+        }
+
+
         // GET: api/Feedbacktbs/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Feedbacktb>> GetFeedbacktb(int id)
@@ -118,6 +145,25 @@ namespace hotelhub_backend.Controllers
         private bool FeedbacktbExists(int id)
         {
             return (_context.Feedbacktbs?.Any(e => e.Id == id)).GetValueOrDefault();
+        }
+
+        [HttpGet("markAsRead/{id}")]
+        public async Task<IActionResult> markAsRead(int id)
+        {
+            if (_context.Feedbacktbs == null)
+            {
+                return NotFound();
+            }
+
+            var feedback = await _context.Feedbacktbs.FindAsync(id);
+
+            if(feedback.ReadStatus == 0)
+            {
+                feedback.ReadStatus = 1;
+            }
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 }

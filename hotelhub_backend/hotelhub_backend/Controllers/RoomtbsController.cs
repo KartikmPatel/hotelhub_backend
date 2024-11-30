@@ -50,7 +50,8 @@ namespace hotelhub_backend.Controllers
                                    room.ChildrenCapacity,
                                    room.Quantity,
                                    room.Rent,
-                                   room.Discount
+                                   room.Discount,
+                                   room.ActiveStatus
                                }).ToListAsync();
 
             if (rooms.Count == 0)
@@ -176,5 +177,29 @@ namespace hotelhub_backend.Controllers
         {
             return (_context.Roomtbs?.Any(e => e.Id == id)).GetValueOrDefault();
         }
+
+        [HttpGet("changeActiveStatus/{status}")]
+        public async Task<IActionResult> changeActiveStatus(int roomid,int status)
+        {
+            var room = await _context.Roomtbs.FindAsync(roomid);
+            if (room == null)
+            {
+                return NotFound();
+            }
+
+            if(status == 0)
+            {
+                room.ActiveStatus = 1;
+            }
+            else
+            {
+                room.ActiveStatus = 0;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
     }
+
 }
