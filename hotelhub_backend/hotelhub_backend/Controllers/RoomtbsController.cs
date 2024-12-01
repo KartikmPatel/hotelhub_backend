@@ -31,6 +31,13 @@ namespace hotelhub_backend.Controllers
             return await _context.Roomtbs.ToListAsync();
         }
 
+        [HttpGet("getroomcount/{hid}")]
+        public async Task<int> getroomcount(int hid)
+        {
+            int roomCount = await _context.Roomtbs.CountAsync(r => r.Hid == hid);
+            return roomCount;
+        }
+
         [HttpGet("hotel/{hid}")]
         public async Task<ActionResult<IEnumerable<object>>> GetRoomtbsByHotelId(int hid)
         {

@@ -31,6 +31,13 @@ namespace hotelhub_backend.Controllers
             return await _context.FestivalDiscounts.ToListAsync();
         }
 
+        [HttpGet("getfesdiscountcount")]
+        public async Task<int> getfesdiscountcount()
+        {
+            int discountcount = await _context.FestivalDiscounts.CountAsync();
+            return discountcount;
+        }
+
         // GET: api/FestivalDiscounts/5
         [HttpGet("{id}")]
         public async Task<ActionResult<FestivalDiscount>> GetFestivalDiscount(int id)

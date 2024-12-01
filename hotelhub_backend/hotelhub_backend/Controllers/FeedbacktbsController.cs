@@ -31,6 +31,15 @@ namespace hotelhub_backend.Controllers
             return await _context.Feedbacktbs.ToListAsync();
         }
 
+        [HttpGet("getFeedbackCountByHotel/{hid}")]
+        public async Task<ActionResult<int>> GetFeedbackCountByHotel(int hid)
+        {
+            var feedbackscount = await (from feedback in _context.Feedbacktbs
+                                   where feedback.Hid == hid
+                                   select feedback.Id).CountAsync();
+            return feedbackscount;
+        }
+
         [HttpGet("getByHotel/{hid}")]
         public async Task<ActionResult<IEnumerable<Feedbacktb>>> getByHotel(int hid)
         {

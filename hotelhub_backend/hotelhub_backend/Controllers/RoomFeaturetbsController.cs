@@ -55,6 +55,26 @@ namespace hotelhub_backend.Controllers
             return roomFeaturetb;
         }
 
+        [HttpGet("getRoomFeatureCountByHotel/{id}")]
+        public async Task<ActionResult<int>> GetRoomFeatureCountByHotel(int id)
+        {
+            try
+            {
+                int featureCount = await (from feature in _context.Featurestbs
+                                          join roomFeature in _context.RoomFeaturetbs on feature.Id equals roomFeature.FeatureId
+                                          join room in _context.Roomtbs on roomFeature.RoomId equals room.Id
+                                          where room.Hid == id
+                                          select feature.Id).Distinct().CountAsync();
+
+                return featureCount;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error fetching feature count: {ex.Message}");
+                return StatusCode(500, new { message = "Internal server error." });
+            }
+        }
+
         // GET: api/RoomFeaturetbs/getAllFeatureByHotel/5
         [HttpGet("getAllFeatureByHotel/{id}")]
         public async Task<ActionResult<IEnumerable<object>>> GetRoomFeatureByHotel(int id)
