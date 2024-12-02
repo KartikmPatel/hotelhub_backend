@@ -98,7 +98,16 @@ namespace hotelhub_backend.Controllers
                 return BadRequest();
             }
 
-            // Ensure the room category and hotel relationship updates are correctly handled
+            // Check if the room with the same 'Hid', 'Roomcategoryid', and 'City' already exists in the database
+            var existingRoomWithSameDetails = await _context.Roomtbs
+                .FirstOrDefaultAsync(r => r.Hid == roomtb.Hid && r.Roomcategoryid == roomtb.Roomcategoryid && r.City == roomtb.City && r.Id != id);
+
+            if (existingRoomWithSameDetails != null)
+            {
+                return Conflict("A room with the same Category, and City already exists.");
+            }
+
+            // Ensure the room exists before updating
             var existingRoom = await _context.Roomtbs.FindAsync(id);
             if (existingRoom == null)
             {
@@ -106,7 +115,6 @@ namespace hotelhub_backend.Controllers
             }
 
             // Update fields individually to avoid overwriting unintended data
-            existingRoom.Id = roomtb.Id;
             existingRoom.Roomcategoryid = roomtb.Roomcategoryid;
             existingRoom.AdultCapacity = roomtb.AdultCapacity;
             existingRoom.ChildrenCapacity = roomtb.ChildrenCapacity;
@@ -148,19 +156,24 @@ namespace hotelhub_backend.Controllers
             if (_context.Roomtbs == null)
                 return Problem("Entity set 'hotelhubContext.Roomtbs' is null.");
 
-            //var categorytb = await _context.RoomCategorytbs.FirstOrDefaultAsync(x => x.Id == roomtb.Roomcategoryid);
-            //var hoteltb = await _context.Hoteltbs.FirstOrDefaultAsync(x => x.Id == roomtb.Hid);
-            //var festivalDiscount = await _context.FestivalDiscounts.FirstOrDefaultAsync(x => x.Id == roomtb.FestivalId);
+            // Check if a room with the same Hid, Roomcategoryid, and City already exists
+            var existingRoom = await _context.Roomtbs
+                .FirstOrDefaultAsync(r => r.Hid == roomtb.Hid &&
+                                          r.Roomcategoryid == roomtb.Roomcategoryid &&
+                                          r.City == roomtb.City);
 
-            //roomtb.Roomcategory = categorytb;
-            //roomtb.HidNavigation = hoteltb;
-            //roomtb.Festival = festivalDiscount;
+            if (existingRoom != null)
+            {
+                return BadRequest(new { message = "Room category in this city already exists." });
+            }
 
+            // Add the new room if validation passes
             _context.Roomtbs.Add(roomtb);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetRoomtb", new { id = roomtb.Id }, roomtb);
         }
+
 
         // DELETE: api/Roomtbs/5
         [HttpDelete("{id}")]
@@ -208,6 +221,15 @@ namespace hotelhub_backend.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        [HttpGet("check-existence/{roomId}")]
+        public async Task<IActionResult> CheckRoomExistence(int roomId, [FromQuery] string city, [FromQuery] int categoryId, [FromQuery] int hid)
+        {
+            var roomExists = await _context.Roomtbs
+                .AnyAsync(r => r.Hid == hid && r.Roomcategoryid == categoryId && r.City == city && r.Id != roomId);
+
+            return Ok(new { exists = roomExists });
         }
     }
 
