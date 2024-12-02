@@ -26,10 +26,10 @@ namespace hotelhub_backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Usertb>>> GetUsertbs()
         {
-          if (_context.Usertbs == null)
-          {
-              return NotFound();
-          }
+            if (_context.Usertbs == null)
+            {
+                return NotFound();
+            }
             return await _context.Usertbs.ToListAsync();
         }
 
@@ -37,10 +37,10 @@ namespace hotelhub_backend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Usertb>> GetUsertb(int id)
         {
-          if (_context.Usertbs == null)
-          {
-              return NotFound();
-          }
+            if (_context.Usertbs == null)
+            {
+                return NotFound();
+            }
             var usertb = await _context.Usertbs.FindAsync(id);
 
             if (usertb == null)
@@ -101,17 +101,63 @@ namespace hotelhub_backend.Controllers
         // POST: api/Usertbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Usertb>> PostUsertb(Usertb usertb)
+        public async Task<ActionResult<Usertb>> PostUsertb([FromForm] string name, [FromForm] string email, [FromForm] string mno, [FromForm] string password, [FromForm] IFormFile image, [FromForm] string city, [FromForm] string gender)
         {
-          if (_context.Usertbs == null)
-          {
-              return Problem("Entity set 'hotelhubContext.Usertbs'  is null.");
-          }
-            usertb.Password = HashPassword(usertb.Password);
-            _context.Usertbs.Add(usertb);
-            await _context.SaveChangesAsync();
+            try
+            {
+                // Check if an image is provided
+                if (image != null && image.Length > 0)
+                {
+                    // Define the upload path (ensure it's correctly set up)
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 
-            return CreatedAtAction("GetUsertb", new { id = usertb.Id }, usertb);
+                    // Ensure the uploads folder exists
+                    if (!Directory.Exists(uploadPath))
+                    {
+                        Directory.CreateDirectory(uploadPath);
+                    }
+
+                    // Generate the file path where the image will be saved
+                    var filePath = Path.Combine(uploadPath, image.FileName);
+
+                    // Save the image file to the server
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Create a new Featurestb instance
+                    var usertb = new Usertb
+                    {
+                        Name = name,
+                        Email = email,
+                        Mno = mno,
+                        Password = password,
+                        Image = image.FileName,      // Store only the filename in the database
+                        City = city,
+                        Gender = gender
+                    };
+
+                    if (_context.Usertbs == null)
+                    {
+                        return Problem("Entity set 'hotelhubContext.Hoteltbs'  is null.");
+                    }
+                    usertb.Password = HashPassword(usertb.Password);
+                    _context.Usertbs.Add(usertb);
+                    await _context.SaveChangesAsync();
+
+                    return CreatedAtAction("GetUsertbs", new { id = usertb.Id }, usertb);
+
+                }
+                else
+                {
+                    return BadRequest("No file uploaded.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         // DELETE: api/Usertbs/5
@@ -157,30 +203,51 @@ namespace hotelhub_backend.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<string> Login(string email, string password)
+        public async Task<IActionResult> Login([FromBody] Dictionary<string, string> loginData)
         {
+            if (!loginData.ContainsKey("email") || !loginData.ContainsKey("password"))
+            {
+                return BadRequest(new { message = "Email and password are required." });
+            }
 
-            // Step 1: Retrieve user by email
+            var email = loginData["email"];
+            var password = loginData["password"];
+
             var user = await _context.Usertbs.FirstOrDefaultAsync(u => u.Email == email);
-    
+
             if (user == null)
             {
-                // User not found
-                return "Invalid email or password.";
+                return Unauthorized(new { message = "Invalid email or password." });
             }
 
-            // Step 2: Hash the provided password
             string hashedPassword = HashPassword(password);
 
-            // Step 3: Compare the hashed passwords
             if (user.Password != hashedPassword)
             {
-                // Password doesn't match
-                return "Invalid email or password."; ;
+                return Unauthorized(new { message = "Invalid email or password." });
             }
 
-            // Step 4: Return success response (you can return user data or a token, etc.)
-            return "login success"; // For security reasons, avoid returning sensitive data like password
+            return Ok(new { message = "Login successful." });
+        }
+
+        [HttpPost("getuid")]
+        public async Task<IActionResult> GetUserId([FromBody] Dictionary<string, string> emailData)
+        {
+            if (!emailData.ContainsKey("email"))
+            {
+                return BadRequest("Email is required.");
+            }
+
+            var email = emailData["email"];
+
+            var user = await _context.Usertbs.FirstOrDefaultAsync(u => u.Email == email);
+
+            if (user == null)
+            {
+                return NotFound("Hotel not found.");
+            }
+
+            return Ok(new { UserId = user.Id });
         }
     }
 }
