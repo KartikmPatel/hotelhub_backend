@@ -21,6 +21,7 @@ namespace hotelhub_backend.Models
         public int Quantity { get; set; }
         public int ActiveStatus { get; set; }
         public int Hid { get; set; }
+        public string City { get; set; } = null!;
         public int Rent { get; set; }
         public int? Discount { get; set; }
         public int? FestivalId { get; set; }

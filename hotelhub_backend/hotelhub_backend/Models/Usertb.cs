@@ -17,6 +17,7 @@ namespace hotelhub_backend.Models
         public string Email { get; set; } = null!;
         public string Mno { get; set; } = null!;
         public string Password { get; set; } = null!;
+        public string Image { get; set; } = null!;
         public string City { get; set; } = null!;
         public string Gender { get; set; } = null!;
 

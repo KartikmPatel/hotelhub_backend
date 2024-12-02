@@ -8,6 +8,7 @@ namespace hotelhub_backend.Models
         public Hoteltb()
         {
             Feedbacktbs = new HashSet<Feedbacktb>();
+            HotelCitytbs = new HashSet<HotelCitytb>();
             Reservationtbs = new HashSet<Reservationtb>();
             Roomtbs = new HashSet<Roomtb>();
         }
@@ -21,6 +22,7 @@ namespace hotelhub_backend.Models
         public int IsApproved { get; set; }
 
         public virtual ICollection<Feedbacktb> Feedbacktbs { get; set; }
+        public virtual ICollection<HotelCitytb> HotelCitytbs { get; set; }
         public virtual ICollection<Reservationtb> Reservationtbs { get; set; }
         public virtual ICollection<Roomtb> Roomtbs { get; set; }
     }

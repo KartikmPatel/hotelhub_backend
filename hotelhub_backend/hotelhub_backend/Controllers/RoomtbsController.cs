@@ -56,6 +56,7 @@ namespace hotelhub_backend.Controllers
                                    room.AdultCapacity,
                                    room.ChildrenCapacity,
                                    room.Quantity,
+                                   room.City,
                                    room.Rent,
                                    room.Discount,
                                    room.ActiveStatus
@@ -110,6 +111,7 @@ namespace hotelhub_backend.Controllers
             existingRoom.AdultCapacity = roomtb.AdultCapacity;
             existingRoom.ChildrenCapacity = roomtb.ChildrenCapacity;
             existingRoom.Quantity = roomtb.Quantity;
+            existingRoom.City = roomtb.City;
             existingRoom.Rent = roomtb.Rent;
             existingRoom.Discount = roomtb.Discount;
             existingRoom.ActiveStatus = roomtb.ActiveStatus;

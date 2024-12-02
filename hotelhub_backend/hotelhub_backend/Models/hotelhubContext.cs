@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using hotelhub_backend.Models;
 
 namespace hotelhub_backend.Models
 {
@@ -216,6 +217,31 @@ namespace hotelhub_backend.Models
                 entity.Property(e => e.UserName)
                     .HasMaxLength(100)
                     .HasColumnName("user_name");
+            });
+
+            modelBuilder.Entity<HotelCitytb>(entity =>
+            {
+                entity.ToTable("hotel_citytb");
+
+                entity.HasIndex(e => e.Hid, "fk-hid");
+
+                entity.Property(e => e.Id)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("id");
+
+                entity.Property(e => e.City)
+                    .HasMaxLength(255)
+                    .HasColumnName("city");
+
+                entity.Property(e => e.Hid)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("hid");
+
+                entity.HasOne(d => d.HidNavigation)
+                    .WithMany(p => p.HotelCitytbs)
+                    .HasForeignKey(d => d.Hid)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("fk-hid");
             });
 
             modelBuilder.Entity<Hoteltb>(entity =>
@@ -510,11 +536,17 @@ namespace hotelhub_backend.Models
                 entity.Property(e => e.Password)
                     .HasMaxLength(255)
                     .HasColumnName("password");
+
+                entity.Property(e => e.Image)
+                .HasMaxLength(255)
+                .HasColumnName("image");
             });
 
             OnModelCreatingPartial(modelBuilder);
         }
 
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+
+        public DbSet<hotelhub_backend.Models.HotelCitytb>? HotelCitytb { get; set; }
     }
 }
