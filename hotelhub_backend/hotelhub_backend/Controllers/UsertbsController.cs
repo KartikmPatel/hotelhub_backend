@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using hotelhub_backend.Models;
 using System.Text;
 using System.Security.Cryptography;
+using System.Net.Mail;
+using System.Net;
 
 namespace hotelhub_backend.Controllers
 {
@@ -140,7 +142,7 @@ namespace hotelhub_backend.Controllers
 
                     if (_context.Usertbs == null)
                     {
-                        return Problem("Entity set 'hotelhubContext.Hoteltbs'  is null.");
+                        return Problem("Entity set 'hotelhubContext.Usertbs'  is null.");
                     }
                     usertb.Password = HashPassword(usertb.Password);
                     _context.Usertbs.Add(usertb);
@@ -228,6 +230,124 @@ namespace hotelhub_backend.Controllers
             }
 
             return Ok(new { message = "Login successful." });
+        }
+
+        [HttpPost("forgotpassword")]
+        public async Task<IActionResult> ForgotPassword([FromBody] Dictionary<string, string> emailData)
+        {
+            try
+            {
+                // Validate input
+                if (!emailData.ContainsKey("email"))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
+
+                var email = emailData["email"];
+
+                // Check if user exists
+                var user = await _context.Usertbs.FirstOrDefaultAsync(h => h.Email == email);
+                if (user == null)
+                {
+                    return NotFound(new { message = "No user found with this email." });
+                }
+
+                // Construct the reset URL
+                var resetUrl = $"http://localhost:4200/resetuserpassword?email={email}";
+
+                // Email content
+                var subject = "Password Reset Request";
+                var body = $@"
+            <p>Hi {user.Name},</p>
+            <p>You requested to reset your password. Click the link below to reset your password:</p>
+            <a href='{resetUrl}' target='_blank'>Reset Password</a>
+            <p>If you did not request this, please ignore this email.</p>";
+
+                // Send the email
+                await SendEmailAsync(user.Email, subject, body);
+
+                return Ok(new { message = "Password reset email sent successfully." });
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                Console.Error.WriteLine($"Error sending password reset email: {ex.Message}");
+                Console.Error.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
+            }
+        }
+
+        private async Task SendEmailAsync(string toEmail, string subject, string body)
+        {
+            try
+            {
+                // Hardcoded credentials for debugging (replace with environment variables in production)
+                var smtpUser = "kartikmpatel0804@gmail.com";
+                var smtpPassword = "amyvnsuxoraosiif"; // Use your Gmail App Password here
+
+                var smtpClient = new SmtpClient("smtp.gmail.com")
+                {
+                    Port = 587,
+                    Credentials = new NetworkCredential(smtpUser, smtpPassword),
+                    EnableSsl = true,
+                };
+
+                var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(smtpUser),
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true,
+                };
+                mailMessage.To.Add(toEmail);
+
+                // Send the email asynchronously
+                await smtpClient.SendMailAsync(mailMessage);
+            }
+            catch (SmtpException smtpEx)
+            {
+                Console.Error.WriteLine($"SMTP Error: {smtpEx.Message}");
+                throw new Exception("Error while sending email. Please try again later.");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"General Error: {ex.Message}");
+                throw new Exception("An unexpected error occurred. Please try again later.");
+            }
+        }
+
+        [HttpPost("resetpassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] Dictionary<string, string> resetData)
+        {
+            try
+            {
+                if (!resetData.ContainsKey("email") || !resetData.ContainsKey("password"))
+                {
+                    return BadRequest(new { message = "Email and password are required." });
+                }
+
+                var email = resetData["email"];
+                var newPassword = resetData["password"];
+
+                // Find user by email
+                var user = await _context.Usertbs.FirstOrDefaultAsync(u => u.Email == email);
+
+                if (user == null)
+                {
+                    return BadRequest(new { message = "Invalid user." });
+                }
+
+                // Reset the password (assumes HashPassword is a method for hashing passwords)
+                user.Password = HashPassword(newPassword);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Password reset successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
+            }
         }
 
         [HttpPost("getuid")]
