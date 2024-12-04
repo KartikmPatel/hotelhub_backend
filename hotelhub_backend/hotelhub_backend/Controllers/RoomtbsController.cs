@@ -71,22 +71,103 @@ namespace hotelhub_backend.Controllers
         }
 
         // GET: api/Roomtbs/5
+        // GET: api/Roomtbs/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Roomtb>> GetRoomtb(int id)
+        public async Task<ActionResult<object>> GetRoomtb(int id)
         {
-          if (_context.Roomtbs == null)
-          {
-              return NotFound();
-          }
-            var roomtb = await _context.Roomtbs.FindAsync(id);
-
-            if (roomtb == null)
+            if (_context.Roomtbs == null)
             {
                 return NotFound();
             }
 
-            return roomtb;
+            // Fetch room details excluding feedbacks
+            var roomDetails = await _context.Roomtbs
+                .Where(r => r.Id == id)
+                .Select(r => new
+                {
+                    r.Id,
+                    r.Roomcategoryid,
+                    r.AdultCapacity,
+                    r.ChildrenCapacity,
+                    r.Quantity,
+                    r.ActiveStatus,
+                    r.Hid,
+                    r.City,
+                    r.Rent,
+                    r.Discount,
+                    r.FestivalId,
+                    RoomCategory = r.Roomcategory != null ? new
+                    {
+                        r.Roomcategory.Id,
+                        r.Roomcategory.CategoryName
+                    } : null,
+                    Facilities = r.RoomFacilitytbs.Select(f => new
+                    {
+                        f.Facility.Id,
+                        f.Facility.FacilityName,
+                        f.Facility.Image
+                    }).ToList(), // Materialize facilities as a list
+                    Features = r.RoomFeaturetbs.Select(f => new
+                    {
+                        f.Feature.Id,
+                        f.Feature.FeatureName,
+                        f.Feature.Image
+                    }).ToList(), // Materialize features as a list
+                    Images = r.RoomImagetbs.Select(img => new
+                    {
+                        img.Id,
+                        img.Image
+                    }).ToList() // Materialize images as a list
+                })
+                .FirstOrDefaultAsync();
+
+            if (roomDetails == null)
+            {
+                return NotFound();
+            }
+
+            // Fetch top 5 feedbacks separately
+            var feedbacks = await _context.Feedbacktbs
+                .Where(f => f.RoomId == id)
+                .OrderByDescending(f => f.Rating)
+                .Take(5)
+                .Select(f => new
+                {
+                    f.Id,
+                    f.Comments,
+                    f.Rating,
+                    f.Hid,
+                    f.RoomId,
+                    UserName = f.User != null ? f.User.Name : "Unknown",
+                    Image = f.User != null ? f.User.Image : "Unknown",
+                    f.ReadStatus
+                })
+                .ToListAsync(); // Materialize feedbacks as a list
+
+            // Combine room details with feedbacks
+            var finalDetails = new
+            {
+                roomDetails.Id,
+                roomDetails.Roomcategoryid,
+                roomDetails.AdultCapacity,
+                roomDetails.ChildrenCapacity,
+                roomDetails.Quantity,
+                roomDetails.ActiveStatus,
+                roomDetails.Hid,
+                roomDetails.City,
+                roomDetails.Rent,
+                roomDetails.Discount,
+                roomDetails.FestivalId,
+                roomDetails.RoomCategory,
+                roomDetails.Facilities,
+                roomDetails.Features,
+                roomDetails.Images,
+                Feedbacks = feedbacks
+            };
+
+            return Ok(finalDetails);
         }
+
 
         // PUT: api/Roomtbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
@@ -231,6 +312,130 @@ namespace hotelhub_backend.Controllers
 
             return Ok(new { exists = roomExists });
         }
+
+        [HttpGet("topratedhotels")]
+        public async Task<IActionResult> GetTopRatedHotels()
+        {
+            try
+            {
+                var topHotels = await _context.Hoteltbs
+                    .Where(h => h.IsApproved == 1) // Assuming 1 indicates approved hotels
+                    .Select(h => new
+                    {
+                        h.Id,
+                        h.Hname,
+                        h.City,
+                        h.Image,
+                        AverageRating = Math.Round(_context.Feedbacktbs
+                            .Where(r => r.Hid == h.Id)
+                            .Average(r => (double?)r.Rating) ?? 0
+                            )
+                    })
+                    .OrderByDescending(h => h.AverageRating)
+                    .Take(4)
+                    .ToListAsync();
+
+                return Ok(topHotels);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpGet("gethotelsbycity")]
+        public async Task<IActionResult> GetHotelsByCity([FromQuery] string city)
+        {
+            if (string.IsNullOrWhiteSpace(city))
+            {
+                return BadRequest(new { message = "City is required." });
+            }
+
+            // Get the list of hotel IDs based on the city
+            var hotelIds = await _context.Roomtbs
+                                        .Where(r => r.City.ToLower() == city.ToLower())
+                                        .Select(r => r.Hid)
+                                        .Distinct()
+                                        .ToListAsync();
+
+            if (hotelIds == null || hotelIds.Count == 0)
+            {
+                return NotFound(new { message = "No hotels found for the specified city." });
+            }
+
+            // Get hotel details along with average feedback rating based on the hotel IDs
+            var hotels = await _context.Hoteltbs
+                                       .Where(h => hotelIds.Contains(h.Id))
+                                       .Select(h => new
+                                       {
+                                           h.Id,
+                                           h.Hname,
+                                           h.Image,
+                                           // Calculate average rating from the Feedbacktb table
+                                           Rating = _context.Feedbacktbs
+                                                            .Where(f => f.Hid == h.Id && f.Rating.HasValue)
+                                                            .Average(f => f.Rating) // Average rating for this hotel
+                                       })
+                                       .ToListAsync();
+
+            return Ok(hotels);
+        }
+
+        [HttpGet("searchroomsbyhotel/{hid}")]
+        public IActionResult GetRoomsByFilter(int hid, [FromQuery] string city, [FromQuery] int adultCapacity, [FromQuery] int childCapacity)
+        {
+            if (string.IsNullOrEmpty(city))
+            {
+                return BadRequest("City is required.");
+            }
+
+            var filteredRooms = _context.Roomtbs
+                .Where(room => room.City == city &&
+                               room.Hid == hid &&
+                               room.AdultCapacity >= adultCapacity &&
+                               room.ChildrenCapacity >= childCapacity)
+                .Select(room => new
+                {
+                    room.Id,
+                    CategoryName = _context.RoomCategorytbs
+                                           .Where(category => category.Id == room.Roomcategoryid)
+                                           .Select(category => category.CategoryName)
+                                           .FirstOrDefault(),
+                    room.AdultCapacity,
+                    room.ChildrenCapacity,
+                    room.Quantity,
+                    room.ActiveStatus,
+                    room.Hid,
+                    room.City,
+                    room.Rent,
+                    room.Discount,
+                    room.FestivalId,
+                    FirstImage = _context.RoomImagetbs
+                                         .Where(image => image.Roomid == room.Id)
+                                         .OrderBy(image => image.Id)
+                                         .Select(image => image.Image)
+                                         .FirstOrDefault(),
+                    Facilities = _context.RoomFacilitytbs
+                                         .Where(rf => rf.RoomId == room.Id)
+                                         .Select(rf => rf.Facility.FacilityName)
+                                         .ToList(),
+                    Features = _context.RoomFeaturetbs
+                                       .Where(rf => rf.RoomId == room.Id)
+                                       .Select(rf => rf.Feature.FeatureName)
+                                       .ToList()
+                })
+                .ToList();
+
+            if (!filteredRooms.Any())
+            {
+                return NotFound("No rooms match the given criteria.");
+            }
+
+            return Ok(filteredRooms);
+        }
+
+
     }
+
 
 }

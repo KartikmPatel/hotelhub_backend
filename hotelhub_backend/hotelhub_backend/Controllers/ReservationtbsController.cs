@@ -119,5 +119,91 @@ namespace hotelhub_backend.Controllers
         {
             return (_context.Reservationtbs?.Any(e => e.Id == id)).GetValueOrDefault();
         }
+
+        [HttpGet("getavailability/{rid}")]
+        public IActionResult GetAvailibility(int rid, [FromQuery] DateTime checkIn)
+        {
+            if (_context.Reservationtbs == null)
+            {
+                return NotFound("Reservation table not found.");
+            }
+
+
+            // Query to get the count of reservations meeting the condition
+            int count = _context.Reservationtbs
+                .Where(r => r.RoomId == rid && r.CheckOut > checkIn)
+                .Count();
+
+            return Ok(new { AvailableReservationsCount = count });
+        }
+
+        [HttpPost("bookroom")]
+        public async Task<IActionResult> BookRoom([FromBody] BookingRequest bookingRequest)
+        {
+            if (bookingRequest == null)
+                return BadRequest(new { success = false, message = "Invalid booking data." });
+
+            try
+            {
+                // Create a new reservation
+                var reservation = new Reservationtb
+                {
+                    UserId = bookingRequest.UserId,
+                    RoomId = bookingRequest.RoomId,
+                    Hid = bookingRequest.HotelId,
+                    Rent = bookingRequest.Rent,
+                    CheckIn = bookingRequest.CheckIn,
+                    CheckOut = bookingRequest.CheckOut
+                };
+
+                // Add reservation to the database
+                _context.Reservationtbs.Add(reservation);
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Room booked successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("updatequantity")]
+        public async Task<IActionResult> UpdateQuantity([FromBody] Dictionary<string, int> qtyData)
+        {
+            if (qtyData == null || !qtyData.ContainsKey("roomid") || !qtyData.ContainsKey("qty"))
+            {
+                return BadRequest(new { message = "Invalid data. Please provide 'roomid' and 'qty'." });
+            }
+
+            try
+            {
+                var roomid = qtyData["roomid"];
+                var qty = qtyData["qty"];
+
+                // Find the room by ID
+                var room = await _context.Roomtbs.FirstOrDefaultAsync(r => r.Id == roomid);
+                if (room == null)
+                {
+                    return NotFound(new { message = "Room not found." });
+                }
+
+                // Update the room quantity
+                room.Quantity -= qty;
+
+                // Save changes to the database
+                _context.Roomtbs.Update(room);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Quantity updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
+            }
+        }
+
     }
 }
