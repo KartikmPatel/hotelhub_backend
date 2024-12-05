@@ -291,6 +291,10 @@ namespace hotelhub_backend.Models
                     .HasColumnType("int(11)")
                     .HasColumnName("id");
 
+                entity.Property(e => e.BookingStatus)
+                   .HasColumnType("int(11)")
+                   .HasColumnName("booking_status");
+
                 entity.Property(e => e.CheckIn).HasColumnType("date").HasColumnName("checkIn");
 
                 entity.Property(e => e.CheckOut).HasColumnType("date").HasColumnName("checkOut");

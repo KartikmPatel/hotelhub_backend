@@ -131,7 +131,7 @@ namespace hotelhub_backend.Controllers
 
             // Query to get the count of reservations meeting the condition
             int count = _context.Reservationtbs
-                .Where(r => r.RoomId == rid && r.CheckOut > checkIn)
+                .Where(r => r.RoomId == rid && r.CheckOut > checkIn && r.BookingStatus==1)
                 .Count();
 
             return Ok(new { AvailableReservationsCount = count });
@@ -168,6 +168,109 @@ namespace hotelhub_backend.Controllers
             {
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpGet("getReservationByUser/{userId}")]
+        public IActionResult GetReservationDetailsByUser(int userId)
+        {
+            var reservations = _context.Reservationtbs
+                .Where(r => r.UserId == userId)
+                .Select(r => new
+                {
+                    r.Id,
+                    r.Hid,
+                    r.CheckIn,
+                    r.CheckOut,
+                    r.RoomId,
+                    r.Rent,
+                    r.BookingStatus,
+                    HotelName = r.HidNavigation.Hname, // Assuming Hoteltb has a property 'HotelName'
+                    RoomCategory = r.Room.Roomcategory.CategoryName, // Assuming Roomtb has a navigation property to Roomcategory
+                })
+                .ToList();
+
+            if (reservations.Count == 0)
+            {
+                return NotFound("No reservations found for this user.");
+            }
+
+            return Ok(reservations);
+        }
+
+        [HttpGet("cancelBooking/{uid}/{rid}")]
+        public async Task<IActionResult> CancelBooking(int uid, int rid)
+        {
+            // Check if the reservation exists
+            var reservation = await _context.Reservationtbs.FirstOrDefaultAsync(r => r.Id == rid);
+            if (reservation == null)
+            {
+                return NotFound("Reservation not found.");
+            }
+
+            // Check if the user exists
+            var user = await _context.Usertbs.FirstOrDefaultAsync(u => u.Id == uid);
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            // Create the cancellation record
+            var cancelBooking = new CancelBookingtb
+            {
+                Uid = uid, // User ID
+                Revid = rid // Reservation ID
+            };
+
+            // Add the cancellation record to the CancelBookingtb table
+            _context.CancelBookingtbs.Add(cancelBooking);
+
+            //Optionally, update the reservation status if required (e.g., "Canceled" status)
+            reservation.BookingStatus =0; // Update the status (this depends on your model)
+            _context.Reservationtbs.Update(reservation);
+
+            // Save changes to the database
+            await _context.SaveChangesAsync();
+
+            return Ok("Booking canceled successfully.");
+        }
+
+        [HttpGet("getReservationByHotel/{hotelId}")]
+        public IActionResult GetReservationDetailsByHotel(int hotelId)
+        {
+            var reservations = _context.Reservationtbs
+                .Where(r => r.Hid == hotelId)  // Filter reservations by hotel ID
+                .Select(r => new
+                {
+                    r.Id,
+                    r.UserId,
+                    r.CheckIn,
+                    r.CheckOut,
+                    r.RoomId,
+                    r.Rent,
+                    r.BookingStatus,
+                    UserName = r.User.Name, // Assuming Usertb has a property 'Name'
+                    RoomCategory = r.Room.Roomcategory.CategoryName,
+                    city= r.Room.City// Assuming Roomtb has a navigation property to Roomcategory
+                })
+                .ToList();
+
+            if (reservations.Count == 0)
+            {
+                return NotFound("No reservations found for this hotel.");
+            }
+
+            return Ok(reservations);
+        }
+
+        [HttpGet("getBookingCountByHotel/{hotelId}")]
+        public async Task<int> getBookingCountByHotel(int hotelId)
+        {
+            // Count the number of reservations where the Hotel ID matches the provided hotelId
+            int hotelBookingCount = await _context.Reservationtbs
+                .Where(r => r.Hid == hotelId) // Filter by hotel ID
+                .CountAsync();
+
+            return hotelBookingCount;
         }
 
     }
