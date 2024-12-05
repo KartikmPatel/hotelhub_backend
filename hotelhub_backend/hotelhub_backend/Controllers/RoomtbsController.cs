@@ -365,18 +365,20 @@ namespace hotelhub_backend.Controllers
 
             // Get hotel details along with average feedback rating based on the hotel IDs
             var hotels = await _context.Hoteltbs
-                                       .Where(h => hotelIds.Contains(h.Id))
-                                       .Select(h => new
-                                       {
-                                           h.Id,
-                                           h.Hname,
-                                           h.Image,
-                                           // Calculate average rating from the Feedbacktb table
-                                           Rating = _context.Feedbacktbs
-                                                            .Where(f => f.Hid == h.Id && f.Rating.HasValue)
-                                                            .Average(f => f.Rating) // Average rating for this hotel
-                                       })
-                                       .ToListAsync();
+                           .Where(h => hotelIds.Contains(h.Id))
+                           .Select(h => new
+                           {
+                               h.Id,
+                               h.Hname,
+                               h.Image,
+                               // Calculate and round average rating from the Feedbacktb table
+                               Rating = Math.Round(
+                                   _context.Feedbacktbs
+                                           .Where(f => f.Hid == h.Id && f.Rating.HasValue)
+                                           .Average(f => f.Rating) ?? 0 // Handle null case with ?? 0
+                               )
+                           })
+                           .ToListAsync();
 
             return Ok(hotels);
         }
@@ -422,7 +424,12 @@ namespace hotelhub_backend.Controllers
                     Features = _context.RoomFeaturetbs
                                        .Where(rf => rf.RoomId == room.Id)
                                        .Select(rf => rf.Feature.FeatureName)
-                                       .ToList()
+                                       .ToList(),
+                    AverageRating = Math.Round(
+                            _context.Feedbacktbs
+                        .Where(feedback => feedback.RoomId == room.Id && feedback.Rating.HasValue)
+                        .Average(feedback => feedback.Rating) ?? 0 // Handle null with default value of 0
+            )
                 })
                 .ToList();
 
@@ -434,8 +441,148 @@ namespace hotelhub_backend.Controllers
             return Ok(filteredRooms);
         }
 
+        [HttpGet("search-by-category")]
+        public IActionResult SearchByCategory(int categoryId, string city, int? hid, int? adultCapacity, int? childQuantity)
+        {
+            var query = _context.Roomtbs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(r => r.City == city);
+
+            if (hid.HasValue)
+                query = query.Where(r => r.Hid == hid);
+
+            if (adultCapacity.HasValue)
+                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
+
+            if (childQuantity.HasValue)
+                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
+
+            query = query.Where(r => r.Roomcategoryid == categoryId);
+
+            return Ok(FormatRoomResponse(query));
+        }
+
+        [HttpGet("search-by-facilities")]
+        public IActionResult SearchByFacilities([FromQuery] List<int> facilityIds, string city, int? hid, int? adultCapacity, int? childQuantity)
+        {
+            var query = _context.Roomtbs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(r => r.City == city);
+
+            if (hid.HasValue)
+                query = query.Where(r => r.Hid == hid);
+
+            if (adultCapacity.HasValue)
+                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
+
+            if (childQuantity.HasValue)
+                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
+
+            query = query.Where(r => r.RoomFacilitytbs.Any(f => facilityIds.Contains(f.FacilityId)));
+
+            return Ok(FormatRoomResponse(query));
+        }
+
+        [HttpGet("search-by-features")]
+        public IActionResult SearchByFeatures([FromQuery] List<int> featureIds, string city, int? hid, int? adultCapacity, int? childQuantity)
+        {
+            var query = _context.Roomtbs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(r => r.City == city);
+
+            if (hid.HasValue)
+                query = query.Where(r => r.Hid == hid);
+
+            if (adultCapacity.HasValue)
+                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
+
+            if (childQuantity.HasValue)
+                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
+
+            query = query.Where(r => r.RoomFeaturetbs.Any(f => featureIds.Contains(f.FeatureId)));
+
+            return Ok(FormatRoomResponse(query));
+        }
+
+        [HttpGet("search-by-rating")]
+        public IActionResult SearchByRating(decimal rating, string city, int? hid, int? adultCapacity, int? childQuantity)
+        {
+            var query = _context.Roomtbs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(r => r.City == city);
+
+            if (hid.HasValue)
+                query = query.Where(r => r.Hid == hid);
+
+            if (adultCapacity.HasValue)
+                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
+
+            if (childQuantity.HasValue)
+                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
+
+            query = query.Where(r => _context.Feedbacktbs
+                .Where(f => f.RoomId == r.Id && f.Rating.HasValue)
+                .Average(f => (double?)f.Rating) >= (double)rating);
+
+            return Ok(FormatRoomResponse(query));
+        }
+
+        [HttpGet("search-by-status")]
+        public IActionResult SearchByStatus(bool isActive, string city, int? hid, int? adultCapacity, int? childQuantity)
+        {
+            var query = _context.Roomtbs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(r => r.City == city);
+
+            if (hid.HasValue)
+                query = query.Where(r => r.Hid == hid);
+
+            if (adultCapacity.HasValue)
+                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
+
+            if (childQuantity.HasValue)
+                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
+
+            query = query.Where(r => r.ActiveStatus == (isActive ? 1 : 0));
+
+            return Ok(FormatRoomResponse(query));
+        }
+
+        private List<object> FormatRoomResponse(IQueryable<Roomtb> query)
+        {
+            return query.Select(room => new
+            {
+                room.Id,
+                room.City,
+                room.Hid,
+                room.AdultCapacity,
+                room.ChildrenCapacity,
+                room.Quantity,
+                room.ActiveStatus,
+                room.Rent,
+                room.Discount,
+                room.Roomcategory.CategoryName,
+                FirstImage = _context.RoomImagetbs
+                    .Where(image => image.Roomid == room.Id)
+                    .OrderBy(image => image.Id)
+                    .Select(image => image.Image)
+                    .FirstOrDefault(),
+                Facilities = room.RoomFacilitytbs.Select(f => f.Facility.FacilityName).ToList(),
+                Features = room.RoomFeaturetbs.Select(f => f.Feature.FeatureName).ToList(),
+                AverageRating = Math.Round(_context.Feedbacktbs
+                    .Where(f => f.RoomId == room.Id && f.Rating.HasValue)
+                    .Average(f => f.Rating) ?? 0)
+            })
+            .Cast<object>()  // Explicitly cast to object
+            .ToList();
+        }
+
 
     }
-
 
 }

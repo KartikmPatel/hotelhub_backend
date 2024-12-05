@@ -20,6 +20,25 @@ namespace hotelhub_backend.Controllers
             _context = context;
         }
 
+        // GET: api/HotelCitytbs/getBranchCountByHotel/5
+        [HttpGet("getBranchCountByHotel/{id}")]
+        public async Task<ActionResult<int>> GetBranchCountByHotel(int id)
+        {
+            try
+            {
+                int branchCount = await (from branch in _context.HotelCitytb
+                                         where branch.Hid == id
+                                         select branch.Id).Distinct().CountAsync();
+
+                return branchCount;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error fetching feature count: {ex.Message}");
+                return StatusCode(500, new { message = "Internal server error." });
+            }
+        }
+
         // GET: api/HotelCitytbs
         [HttpGet]
         public async Task<ActionResult<IEnumerable<HotelCitytb>>> GetHotelCitytb()

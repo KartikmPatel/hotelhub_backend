@@ -170,40 +170,5 @@ namespace hotelhub_backend.Controllers
             }
         }
 
-        [HttpPost("updatequantity")]
-        public async Task<IActionResult> UpdateQuantity([FromBody] Dictionary<string, int> qtyData)
-        {
-            if (qtyData == null || !qtyData.ContainsKey("roomid") || !qtyData.ContainsKey("qty"))
-            {
-                return BadRequest(new { message = "Invalid data. Please provide 'roomid' and 'qty'." });
-            }
-
-            try
-            {
-                var roomid = qtyData["roomid"];
-                var qty = qtyData["qty"];
-
-                // Find the room by ID
-                var room = await _context.Roomtbs.FirstOrDefaultAsync(r => r.Id == roomid);
-                if (room == null)
-                {
-                    return NotFound(new { message = "Room not found." });
-                }
-
-                // Update the room quantity
-                room.Quantity -= qty;
-
-                // Save changes to the database
-                _context.Roomtbs.Update(room);
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "Quantity updated successfully." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
-            }
-        }
-
     }
 }
