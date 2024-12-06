@@ -131,7 +131,7 @@ namespace hotelhub_backend.Controllers
 
             // Query to get the count of reservations meeting the condition
             int count = _context.Reservationtbs
-                .Where(r => r.RoomId == rid && r.CheckOut > checkIn && r.BookingStatus==1)
+                .Where(r => r.RoomId == rid && r.CheckOut >= checkIn && r.BookingStatus==1)
                 .Count();
 
             return Ok(new { AvailableReservationsCount = count });
@@ -153,7 +153,8 @@ namespace hotelhub_backend.Controllers
                     Hid = bookingRequest.HotelId,
                     Rent = bookingRequest.Rent,
                     CheckIn = bookingRequest.CheckIn,
-                    CheckOut = bookingRequest.CheckOut
+                    CheckOut = bookingRequest.CheckOut,
+                    BookingStatus = 1
                 };
 
                 // Add reservation to the database

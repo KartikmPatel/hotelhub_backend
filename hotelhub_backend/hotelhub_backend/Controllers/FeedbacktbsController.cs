@@ -174,5 +174,105 @@ namespace hotelhub_backend.Controllers
 
             return NoContent();
         }
+
+        [HttpGet("getfeedbackbyuser/{userId}")]
+        public IActionResult GetFeedbackByUser(int userId)
+        {
+            try
+            {
+                var feedbacks = _context.Feedbacktbs
+                    .Where(f => f.UserId == userId)
+                    .Select(f => new
+                    {
+                        FeedbackId = f.Id,
+                        Comments = f.Comments,
+                        Rating = f.Rating,
+                        HotelName = f.HidNavigation.Hname, // Assuming HotelName is the property in Hoteltb
+                        RoomCategory = f.Room.Roomcategory.CategoryName, // Assuming Roomcategory is linked in Roomtb
+                        city = f.Room.City,
+                        ReadStatus = f.ReadStatus
+                    })
+                    .ToList();
+
+                if (!feedbacks.Any())
+                {
+                    return NotFound(new { Message = "No feedback found for the specified user." });
+                }
+
+                return Ok(feedbacks);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while fetching feedback data.", Error = ex.Message });
+            }
+        }
+
+        [HttpGet("GetHotels")]
+        public IActionResult GetHotels()
+        {
+            try
+            {
+                var hotels = _context.Hoteltbs
+                    .Select(h => new { h.Id, h.Hname })
+                    .ToList();
+
+                return Ok(hotels);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while fetching hotels.", Error = ex.Message });
+            }
+        }
+
+        [HttpGet("GetRoomCitiesByHotel/{hotelId}")]
+        public IActionResult GetRoomCitiesByHotel(int hotelId)
+        {
+            try
+            {
+                var cities = _context.Roomtbs
+                    .Where(r => r.Hid == hotelId)
+                    .Select(r => r.City)
+                    .Distinct()
+                    .ToList();
+
+                return Ok(cities);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while fetching room cities.", Error = ex.Message });
+            }
+        }
+
+        [HttpGet("GetRoomCategoriesByHotelAndCity/{hotelId}/{city}")]
+        public IActionResult GetRoomCategoriesByHotelAndCity(int hotelId, string city)
+        {
+            try
+            {
+                var categories = _context.Roomtbs
+                    .Where(r => r.Hid == hotelId && r.City == city)
+                    .Select(r => new { r.Roomcategory.Id, r.Roomcategory.CategoryName })
+                    .Distinct()
+                    .ToList();
+
+                return Ok(categories);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while fetching room categories.", Error = ex.Message });
+            }
+        }
+
+        [HttpGet("rooms/find")]
+        public IActionResult GetRoomId([FromQuery] int hotelId, [FromQuery] string city, [FromQuery] int roomCategoryId)
+        {
+            var room = _context.Roomtbs.FirstOrDefault(r =>
+                r.Hid == hotelId && r.City == city && r.Roomcategoryid == roomCategoryId);
+
+            if (room == null)
+                return NotFound(new { message = "Room not found" });
+
+            return Ok(new { roomId = room.Id });
+        }
+
     }
 }
