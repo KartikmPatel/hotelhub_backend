@@ -56,29 +56,63 @@ namespace hotelhub_backend.Controllers
         // PUT: api/Usertbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsertb(int id, Usertb usertb)
+        public async Task<IActionResult> PutUsertb(int id, [FromForm] string name, [FromForm] string email, [FromForm] string mno, [FromForm] string city, [FromForm] string gender, [FromForm] IFormFile? image)
         {
-            if (id != usertb.Id)
+            // Fetch the existing user
+            var usertb = await _context.Usertbs.FindAsync(id);
+            if (usertb == null)
             {
-                return BadRequest();
+                return NotFound("User not found.");
             }
 
-            // Fetch the existing user from the database
-            var existingUser = await _context.Usertbs.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+            // Update user details
+            usertb.Name = name;
+            usertb.Email = email;
+            usertb.Mno = mno;
+            usertb.City = city;
+            usertb.Gender = gender;
 
-            if (existingUser == null)
+            if (image != null && image.Length > 0)
             {
-                return NotFound();
+                try
+                {
+                    // Generate a unique filename
+                    var uniqueFileName = Guid.NewGuid() + Path.GetExtension(image.FileName);
+
+                    // Define upload path
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+
+                    if (!Directory.Exists(uploadPath))
+                    {
+                        Directory.CreateDirectory(uploadPath);
+                    }
+
+                    // Delete the old image if it exists
+                    if (!string.IsNullOrEmpty(usertb.Image))
+                    {
+                        var oldImagePath = Path.Combine(uploadPath, usertb.Image);
+                        if (System.IO.File.Exists(oldImagePath))
+                        {
+                            System.IO.File.Delete(oldImagePath);
+                        }
+                    }
+
+                    // Save the new image
+                    var filePath = Path.Combine(uploadPath, uniqueFileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    // Update the image filename
+                    usertb.Image = uniqueFileName;
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Image upload failed: {ex.Message}");
+                }
             }
 
-            // Check if the password has been changed
-            if (existingUser.Password != usertb.Password)
-            {
-                // Hash the new password before saving
-                usertb.Password = HashPassword(usertb.Password);
-            }
-
-            // Mark the user entity as modified
             _context.Entry(usertb).State = EntityState.Modified;
 
             try
@@ -87,18 +121,16 @@ namespace hotelhub_backend.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!UsertbExists(id))
+                if (!_context.Usertbs.Any(u => u.Id == id))
                 {
-                    return NotFound();
+                    return NotFound("User not found during update.");
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
         }
+
 
         // POST: api/Usertbs
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
