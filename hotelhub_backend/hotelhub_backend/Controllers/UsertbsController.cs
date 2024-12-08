@@ -53,6 +53,43 @@ namespace hotelhub_backend.Controllers
             return usertb;
         }
 
+
+        [HttpPut("changeUserPassword/{id}")]
+        public async Task<ActionResult<Usertb>> ChangePassword(int id, [FromForm] string password, [FromForm] string newpassword)
+        {
+            try
+            {
+                // Retrieve the user by ID
+                var usertb = await _context.Usertbs.FindAsync(id);
+
+                if (usertb == null)
+                {
+                    return NotFound($"User with ID {id} not found.");
+                }
+
+                string op = HashPassword(password); // Hash the provided old password
+
+                // Check if the old password matches the stored password (hashed)
+                if (!op.Equals(usertb.Password))
+                {
+                    return BadRequest("The old password is incorrect.");
+                }
+
+                // Hash the new password and update
+                usertb.Password = HashPassword(newpassword);
+
+                // Save the changes to the database
+                _context.Usertbs.Update(usertb);
+                await _context.SaveChangesAsync();
+
+                return Ok(usertb); // Return the updated hotel info
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
         // PUT: api/Usertbs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
