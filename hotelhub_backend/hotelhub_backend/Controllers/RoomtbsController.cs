@@ -463,50 +463,6 @@ namespace hotelhub_backend.Controllers
             return Ok(FormatRoomResponse(query));
         }
 
-        [HttpGet("search-by-facilities")]
-        public IActionResult SearchByFacilities([FromQuery] List<int> facilityIds, string city, int? hid, int? adultCapacity, int? childQuantity)
-        {
-            var query = _context.Roomtbs.AsQueryable();
-
-            if (!string.IsNullOrEmpty(city))
-                query = query.Where(r => r.City == city);
-
-            if (hid.HasValue)
-                query = query.Where(r => r.Hid == hid);
-
-            if (adultCapacity.HasValue)
-                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
-
-            if (childQuantity.HasValue)
-                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
-
-            query = query.Where(r => r.RoomFacilitytbs.Any(f => facilityIds.Contains(f.FacilityId)));
-
-            return Ok(FormatRoomResponse(query));
-        }
-
-        [HttpGet("search-by-features")]
-        public IActionResult SearchByFeatures([FromQuery] List<int> featureIds, string city, int? hid, int? adultCapacity, int? childQuantity)
-        {
-            var query = _context.Roomtbs.AsQueryable();
-
-            if (!string.IsNullOrEmpty(city))
-                query = query.Where(r => r.City == city);
-
-            if (hid.HasValue)
-                query = query.Where(r => r.Hid == hid);
-
-            if (adultCapacity.HasValue)
-                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
-
-            if (childQuantity.HasValue)
-                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
-
-            query = query.Where(r => r.RoomFeaturetbs.Any(f => featureIds.Contains(f.FeatureId)));
-
-            return Ok(FormatRoomResponse(query));
-        }
-
         [HttpGet("search-by-rating")]
         public IActionResult SearchByRating(decimal rating, string city, int? hid, int? adultCapacity, int? childQuantity)
         {
@@ -553,6 +509,40 @@ namespace hotelhub_backend.Controllers
             return Ok(FormatRoomResponse(query));
         }
 
+        [HttpGet("search-by-facilities-and-features")]
+        public IActionResult SearchByFacilitiesAndFeatures(
+    [FromQuery] List<int> facilityIds,
+    [FromQuery] List<int> featureIds,
+    string city,
+    int? hid,
+    int? adultCapacity,
+    int? childQuantity)
+        {
+            var query = _context.Roomtbs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(r => r.City == city);
+
+            if (hid.HasValue)
+                query = query.Where(r => r.Hid == hid);
+
+            if (adultCapacity.HasValue)
+                query = query.Where(r => r.AdultCapacity >= adultCapacity.Value);
+
+            if (childQuantity.HasValue)
+                query = query.Where(r => r.ChildrenCapacity >= childQuantity.Value);
+
+            if (facilityIds != null && facilityIds.Any())
+                query = query.Where(r => r.RoomFacilitytbs.Any(f => facilityIds.Contains(f.FacilityId)));
+
+            if (featureIds != null && featureIds.Any())
+                query = query.Where(r => r.RoomFeaturetbs.Any(f => featureIds.Contains(f.FeatureId)));
+
+            return Ok(FormatRoomResponse(query));
+        }
+
+
+
         private List<object> FormatRoomResponse(IQueryable<Roomtb> query)
         {
             return query.Select(room => new
@@ -581,7 +571,6 @@ namespace hotelhub_backend.Controllers
             .Cast<object>()  // Explicitly cast to object
             .ToList();
         }
-
 
     }
 
