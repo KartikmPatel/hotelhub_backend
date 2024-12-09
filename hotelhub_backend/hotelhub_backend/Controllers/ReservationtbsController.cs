@@ -175,20 +175,21 @@ namespace hotelhub_backend.Controllers
         public IActionResult GetReservationDetailsByUser(int userId)
         {
             var reservations = _context.Reservationtbs
-                .Where(r => r.UserId == userId)
-                .Select(r => new
-                {
-                    r.Id,
-                    r.Hid,
-                    r.CheckIn,
-                    r.CheckOut,
-                    r.RoomId,
-                    r.Rent,
-                    r.BookingStatus,
-                    HotelName = r.HidNavigation.Hname, // Assuming Hoteltb has a property 'HotelName'
-                    RoomCategory = r.Room.Roomcategory.CategoryName, // Assuming Roomtb has a navigation property to Roomcategory
-                })
-                .ToList();
+             .Where(r => r.UserId == userId)
+             .Select(r => new
+             {
+                 r.Id,
+                 r.Hid,
+                 r.CheckIn,
+                 r.CheckOut,
+                 r.RoomId,
+                 r.Rent,
+                 r.BookingStatus,
+                 HotelName = r.HidNavigation.Hname, // Assuming Hoteltb has a property 'HotelName'
+                 RoomCategory = r.Room.Roomcategory.CategoryName, // Assuming Roomtb has a navigation property to Roomcategory
+             })
+             .OrderByDescending(r => r.Id) // Orders by CheckIn in descending order
+             .ToList();
 
             if (reservations.Count == 0)
             {
