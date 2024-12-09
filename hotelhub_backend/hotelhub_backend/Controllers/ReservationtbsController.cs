@@ -232,7 +232,7 @@ namespace hotelhub_backend.Controllers
             // Save changes to the database
             await _context.SaveChangesAsync();
 
-            return Ok("Booking canceled successfully.");
+            return Ok(reservation);
         }
 
         [HttpGet("getReservationByHotel/{hotelId}")]
